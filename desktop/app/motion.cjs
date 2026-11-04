@@ -46,9 +46,10 @@ class DesktopMotion {
     const target=below[0] || rails.find(r=>r.kind==='desktop');
     if(target) this.moveTo(target,footprint,true);
   }
-  tick(dt,rails,{footprint=220,speed=65,moving=true}={}) {
+  tick(dt,rails,{footprint=220,speed=65,moving=true,freezeTransition=false}={}) {
     dt=clamp(dt,0,.1);
     if(this.transition) {
+      if(freezeTransition)return {distance:0,direction:this.direction};
       const a=this.transition; a.t=Math.min(1,a.t+dt/0.9);
       const t=a.t*a.t*(3-2*a.t);
       this.x=a.fromX+(a.toX-a.fromX)*t;

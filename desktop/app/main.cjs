@@ -7,6 +7,9 @@ let modelBytes=null;
 const {pathToFileURL}=require('node:url');
 const {clamp,platforms,DesktopMotion}=require('./motion.cjs');
 const {Maintenance}=require('./maintenance.cjs');
+const {activity}=require('./activity.cjs');
+let panelTab='controls';
+function currentActivity(){return activity(state,{service:maintenance.progress(),dragging:!!dragging,critical:maintenance.needsStop(),panelOpen:!!panel?.isVisible(),hovered:!ignoring,turning:performance.now()<turnUntil,transition:!!motion.transition,direction:motion.direction});}
 let maintenance=new Maintenance(),serviceHood=false,lastHealth=0,lastHealthSave=0,lastHorn=0,turnUntil=0,lastDirection=1;
 protocol.registerSchemesAsPrivileged([{scheme:'truck',privileges:{standard:true,secure:true,supportFetchAPI:true,corsEnabled:true,stream:true}}]);
 if(!app.requestSingleInstanceLock())app.quit();
@@ -21,11 +24,11 @@ let state={...defaults};
 const configPath=()=>path.join(app.getPath('userData'),'settings.json');
 function save(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{try{fs.writeFileSync(configPath(),JSON.stringify({...state,maintenance:maintenance.snapshot()},null,2));}catch(e){console.error(e.message);}},300);}
 function send(win,channel,value){if(win&&!win.isDestroyed())win.webContents.send(channel,value);}
-function broadcast(){for(const win of [pet,panel])send(win,'state',{...state,maintenance:maintenance.snapshot(),service:maintenance.progress(),nativeReady,platform:process.platform});}
+function broadcast(){for(const win of [pet,panel])send(win,'state',{...state,maintenance:maintenance.snapshot(),service:maintenance.progress(),activity:currentActivity(),panelTab,nativeReady,platform:process.platform});}
 function stopped(){return performance.now()<turnUntil||!!maintenance.job||maintenance.needsStop()||state.paused||!ignoring||!!dragging||!!panel?.isVisible()||state.hood||state.doorLeft||state.doorRight;}
 function allRails(){return platforms(screen.getAllDisplays(),state.mode==='desktop'?[]:windowEdges,frame.footprint,state.mode,Math.max(35,frame.foot-28));}
 function place(){if(!pet||pet.isDestroyed())return;pet.setPosition(Math.round(motion.x-frame.width/2),Math.round(motion.y-frame.foot),false);}
-function ignore(value){if(!pet||pet.isDestroyed()||ignoring===value)return;ignoring=value;pet.setIgnoreMouseEvents(value,{forward:true});}
+function ignore(value){if(!pet||pet.isDestroyed()||ignoring===value)return;ignoring=value;pet.setIgnoreMouseEvents(value,{forward:true});broadcast();}
 function nearestFloor(){const p=screen.getCursorScreenPoint();const d=screen.getDisplayNearestPoint(p);return allRails().find(r=>r.id===`desktop:${d.id}`)||allRails()[0];}
 function chooseWindow(){const rails=allRails().filter(r=>r.kind==='window');const r=rails[0];if(r)motion.moveTo(r,frame.footprint,true);else{motion.moveTo(nearestFloor(),frame.footprint,true);send(panel,'status','Нет подходящего открытого окна. Пока едем по рабочему столу.');}}
 function resize(){frame.width=state.size;frame.height=Math.round(state.size*.70);pet.setSize(frame.width,frame.height,false);place();}
@@ -47,7 +50,8 @@ function startTracker(){
  tracker.on('error',()=>{nativeReady=false;broadcast();send(panel,'status','Не удалось получить границы окон. Езда по рабочему столу доступна.');});
  tracker.on('exit',()=>{nativeReady=false;windowEdges=[];broadcast();});
 }
-function showPanel(){
+function showPanel(tab='controls'){
+ panelTab=tab==='state'?'state':'controls';
  if(panel&&!panel.isDestroyed()){panel.show();panel.focus();broadcast();return;}
  const b=pet.getBounds(),area=screen.getDisplayMatching(b).workArea;
  panel=new BrowserWindow({width:430,height:Math.min(760,area.height),minWidth:380,minHeight:Math.min(620,area.height),alwaysOnTop:true,title:'Ваш Volvo',backgroundColor:'#111b24',
@@ -58,7 +62,8 @@ function showPanel(){
  panel.on('close',e=>{if(!quitting){e.preventDefault();panel.hide();broadcast();}});
 }
 function menu(){return Menu.buildFromTemplate([
- {label:'Управление Volvo',click:showPanel},
+ {label:'Управление Volvo',click:()=>showPanel('controls')},
+ {label:'Состояние грузовика',click:()=>showPanel('state')},
  {label:state.paused?'Продолжить поездку':'Остановиться',click:()=>command('paused',!state.paused)},
  {label:'На окно',click:()=>command('window')},{label:'На рабочий стол',click:()=>command('desktop')},
  {type:'separator'},
@@ -68,11 +73,12 @@ function menu(){return Menu.buildFromTemplate([
  {label:'Помыть грузовик',click:()=>command('wash')},
  {label:'ТО: масло и двигатель',click:()=>command('service')},
  {label:'Заменить видимое переднее колесо',click:()=>command('replace-wheel',motion.direction===1?0:1)},
- {label:'Состояние и другие колёса',click:showPanel},
+ {label:'Состояние и другие колёса',click:()=>showPanel('state')},
  {type:'separator'},{label:'Выход',click:()=>app.quit()}
 ]);}
 function updateTray(){if(tray)tray.setContextMenu(menu());}
 function command(type,value){
+ if(type==='panel-tab'){if(['controls','state'].includes(value)){panelTab=value;broadcast();}return;}
  if(type==='horn'){const now=performance.now();if(now-lastHorn<350)return;lastHorn=now;send(panel?.isVisible()?panel:pet,'horn',{});return;}
  if(type==='service'||type==='replace-wheel'||type==='wash'){
   if(!maintenance.begin(type==='service'?'engine':type==='wash'?'wash':'wheel',Number(value??0)))return;
@@ -122,7 +128,7 @@ app.whenReady().then(async()=>{
  pet.loadURL('truck://app/index.html');
  const icon=nativeImage.createFromPath(path.join(__dirname,'assets','tray.png'));
  if(!icon.isEmpty()){tray=new Tray(icon);tray.setToolTip('Volvo • на рабочем столе');tray.on('double-click',showPanel);updateTray();}
- ipcMain.on('ready',event=>{send(BrowserWindow.fromWebContents(event.sender),'state',{...state,maintenance:maintenance.snapshot(),service:maintenance.progress(),nativeReady,platform:process.platform});if(event.sender===pet.webContents){pet.showInactive();if(process.env.TRUCK_SMOKE_TEST==='1')setTimeout(async()=>{try{const image=await pet.webContents.capturePage();if(!image.toBitmap().some((v,i)=>i%4===3&&v>0))throw new Error('Empty truck frame');fs.writeFileSync(process.env.TRUCK_SCREENSHOT||'truck-smoke.png',image.toPNG());console.log('TRUCK_SMOKE_OK');
+ ipcMain.on('ready',event=>{send(BrowserWindow.fromWebContents(event.sender),'state',{...state,maintenance:maintenance.snapshot(),service:maintenance.progress(),activity:currentActivity(),panelTab,nativeReady,platform:process.platform});if(event.sender===pet.webContents){pet.showInactive();if(process.env.TRUCK_SMOKE_TEST==='1')setTimeout(async()=>{try{const image=await pet.webContents.capturePage();if(!image.toBitmap().some((v,i)=>i%4===3&&v>0))throw new Error('Empty truck frame');fs.writeFileSync(process.env.TRUCK_SCREENSHOT||'truck-smoke.png',image.toPNG());console.log('TRUCK_SMOKE_OK');
  if(process.env.TRUCK_AUDIO_SMOKE==='1'){
   await pet.webContents.executeJavaScript(`new Promise((resolve,reject)=>{const audio=new Audio('truck://app/assets/horn.wav');audio.volume=0;audio.addEventListener('playing',()=>resolve(true),{once:true});audio.addEventListener('error',()=>reject(new Error('Horn audio failed')),{once:true});audio.play().catch(reject);setTimeout(()=>reject(new Error('Horn timeout')),8000);})`);
   console.log('AUDIO_SMOKE_OK');
@@ -141,14 +147,14 @@ app.whenReady().then(async()=>{
  ticker=setInterval(()=>{
   const now=performance.now(),dt=(now-last)/1000;last=now;maintenance.age(dt);const complete=maintenance.tick(Math.min(dt,.25));if(complete){if(complete.type==='engine')state.hood=serviceHood;broadcast();save();send(panel,'status',complete.type==='wheel'?'Колесо заменено. Можно ехать.':complete.type==='wash'?'Мойка завершена: чистота 100%.':'ТО завершено: масло и двигатель восстановлены.');}let result={distance:0,direction:motion.direction};
   if(dragging){const p=screen.getCursorScreenPoint();motion.x=p.x-dragging.x;motion.y=p.y-dragging.y;}
-  else {const rails=allRails();result=motion.tick(dt,rails,{footprint:frame.footprint,speed:state.speed,moving:!stopped()});
+  else {const rails=allRails();result=motion.tick(dt,rails,{footprint:frame.footprint,speed:state.speed,moving:!stopped(),freezeTransition:!ignoring});
    if(!stopped()&&state.mode==='roam'&&!motion.transition&&now-lastTrip>22000){const others=rails.filter(r=>r.id!==motion.rail?.id);if(others.length)motion.moveTo(others[Math.floor(Math.random()*others.length)],frame.footprint,true);lastTrip=now;}
   }
   if(result.direction!==lastDirection){turnUntil=now+850;lastDirection=result.direction;}
   if(!stopped())maintenance.drive(result.distance);
   if(now-lastHealth>(maintenance.job?100:1000)){broadcast();lastHealth=now;}
   if(now-lastHealthSave>15000){save();lastHealthSave=now;}
-  place();send(pet,'motion',{...result,moving:!stopped(),speed:state.speed});
+  place();send(pet,'motion',{...result,moving:!stopped(),speed:state.speed,burnout:currentActivity().burnout,activity:currentActivity()});
  },1000/30);
  pointerTimer=setInterval(()=>{if(dragging)return;const p=screen.getCursorScreenPoint(),b=pet.getBounds();const inside=p.x>=b.x&&p.y>=b.y&&p.x<b.x+b.width&&p.y<b.y+b.height;if(!inside)ignore(true);send(pet,'pointer',{x:p.x-b.x,y:p.y-b.y,inside});},50);
  globalShortcut.register('Control+Alt+T',showPanel);

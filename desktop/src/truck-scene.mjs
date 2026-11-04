@@ -4,10 +4,11 @@ import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createRig} from './rig.mjs';
 import {createDirt} from './dirt.mjs';
+import {TireSmoke} from './smoke.mjs';
 
 export class TruckScene {
  constructor(canvas,{preview=false}={}) {
-  this.canvas=canvas;this.preview=preview;this.state={lights:true};this.travel=0;this.heading=0;this.targetHeading=0;this.turn=null;
+  this.canvas=canvas;this.preview=preview;this.state={lights:true};this.travel=0;this.heading=0;this.targetHeading=0;this.turn=null;this.burnout=false;
   this.renderer=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true,powerPreference:'low-power'});
   this.renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));this.renderer.setClearColor(0,0);
   this.renderer.outputColorSpace=THREE.SRGBColorSpace;this.renderer.toneMapping=THREE.ACESFilmicToneMapping;this.renderer.toneMappingExposure=1.1;
@@ -28,7 +29,7 @@ export class TruckScene {
   this.model=gltf.scene;
   const box=new THREE.Box3().setFromObject(this.model,true),center=box.getCenter(new THREE.Vector3());
   this.model.position.x-=center.x;this.model.position.z-=center.z;this.model.position.y-=box.min.y;
-  this.vehicle.add(this.model);this.rig=createRig(this.model);
+  this.vehicle.add(this.model);this.rig=createRig(this.model);this.smoke=new TireSmoke(this.scene,this.rig.wheels);
   const materials=new Set();
   this.model.traverse(o=>{if(o.isMesh){this.meshes.push(o);for(const m of (Array.isArray(o.material)?o.material:[o.material]))materials.add(m);}});
   for(const m of materials){
@@ -61,7 +62,7 @@ export class TruckScene {
  }
  update(dt){
   if(!this.rig)return;
-  this.rig.apply(this.state,dt,this.travel);this.travel=0;
+  this.rig.apply(this.state,dt,this.travel,this.burnout);this.travel=0;
   if(!this.preview){
    if(this.turn){this.turn.elapsed=Math.min(.75,this.turn.elapsed+dt);const p=this.turn.elapsed/.75,t=p*p*(3-2*p);this.heading=this.turn.from+this.turn.delta*t;if(p===1){this.heading=this.targetHeading;this.turn=null;}}
    this.vehicle.rotation.y=this.heading;
@@ -69,13 +70,14 @@ export class TruckScene {
   this.vehicle.position.y=this.state.service?.type==='wheel'?.08*Math.sin(Math.PI*this.state.service.progress):0;
   for(const m of this.lamps){m.emissive.set(this.state.lights?0xaad8ff:0x000000);m.emissiveIntensity=this.state.lights?1.4:0;}
   const wash=this.state.service?.type==='wash',progress=wash?this.state.service.progress:0;
-  this.vehicle.updateMatrixWorld(true);this.dirt.inverse.value.copy(this.vehicle.matrixWorld).invert();
+  this.vehicle.updateMatrixWorld(true);this.smoke.update(dt,this.burnout,this.targetHeading===0?1:-1);this.dirt.inverse.value.copy(this.vehicle.matrixWorld).invert();
   this.dirt.amount.value=(1-(this.state.maintenance?.cleanliness??100)/100)*(1-progress);
   this.water.visible=wash;
   if(wash){const transform=new THREE.Object3D();for(let i=0;i<36;i++){const phase=(progress*5+i*.147)%1;transform.position.set(-4.1+(i%12)*.74,4.8-phase*4.6,((i%3)-1)*.95);transform.scale.set(.7,2,.7);transform.updateMatrix();this.water.setMatrixAt(i,transform.matrix);}this.water.instanceMatrix.needsUpdate=true;}
   this.controls?.update();this.renderer.render(this.scene,this.camera);
  }
  motion(data){
+  this.burnout=Boolean(data.burnout);
   const target=data.direction===-1?Math.PI:0;
   if(target!==this.targetHeading){this.targetHeading=target;this.turn={from:this.heading,delta:Math.atan2(Math.sin(target-this.heading),Math.cos(target-this.heading)),elapsed:0};}
   this.travel+=data.distance/(this.width/10);

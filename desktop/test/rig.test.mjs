@@ -29,3 +29,4 @@ test('selected wheel is removed and reattached during replacement without distur
  rig.apply({service:{type:'wheel',wheel:0,progress:.52}},.1);assert.equal(rig.wheels[0].visible,false);
  rig.apply({service:{type:'wheel',wheel:0,progress:.96}},.1);assert.equal(rig.wheels[0].visible,true);assert(rig.wheels[0].position.distanceTo(before[0])<1e-6);
 });
+test('burnout rotates rear driven wheels only and stops when hover ends',()=>{rig.apply({},.1);const front=rig.wheels[0].quaternion.clone(),rear=rig.wheels[3].quaternion.clone();rig.apply({},.1,0,true);assert(rig.wheels[0].quaternion.angleTo(front)<1e-6);assert(rig.wheels[3].quaternion.angleTo(rear)>.5);const stopped=rig.wheels[3].quaternion.clone();rig.apply({},.1,0,false);assert(rig.wheels[3].quaternion.angleTo(stopped)<1e-6);});

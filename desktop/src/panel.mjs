@@ -3,6 +3,21 @@ import {TruckScene} from './truck-scene.mjs';
 const truck=new TruckScene(document.querySelector('canvas'),{preview:true});
 let state={},last=performance.now();
 const status=document.querySelector('#status');
+let selectedTab='controls';
+function selectTab(tab){
+ selectedTab=tab==='state'?'state':'controls';
+ for(const b of document.querySelectorAll('[data-tab]')){const selected=b.dataset.tab===selectedTab;b.setAttribute('aria-selected',String(selected));b.tabIndex=selected?0:-1;}
+ document.querySelector('#controls-panel').hidden=selectedTab!=='controls';document.querySelector('#state-panel').hidden=selectedTab!=='state';
+}
+for(const b of document.querySelectorAll('[data-tab]'))b.addEventListener('click',()=>{selectTab(b.dataset.tab);window.truck.command('panel-tab',selectedTab);});
+document.querySelector('[role=tablist]').addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;e.preventDefault();const tab=e.key==='Home'?'controls':e.key==='End'?'state':selectedTab==='state'?'controls':'state';document.querySelector(`#tab-${tab}`).focus();selectTab(tab);window.truck.command('panel-tab',tab);});
+function facts(){
+ const label=document.querySelector('#activity-label');label.textContent=state.activity?.label??'Стоит · открыто управление';label.dataset.code=state.activity?.code??'controls';
+ document.querySelector('#fact-route').textContent=({roam:'Стол и окна',desktop:'Рабочий стол',windows:'По окнам'})[state.mode]??'Стол и окна';
+ document.querySelector('#fact-doors').textContent=state.doorLeft&&state.doorRight?'Обе открыты':state.doorLeft?'Левая открыта':state.doorRight?'Правая открыта':'Закрыты';
+ document.querySelector('#fact-windows').textContent=state.windowLeft&&state.windowRight?'Оба опущены':state.windowLeft?'Левое опущено':state.windowRight?'Правое опущено':'Подняты';
+ document.querySelector('#fact-hood').textContent=state.hood?'Открыт':'Закрыт';document.querySelector('#fact-lights').textContent=state.lights?'Включены':'Выключены';
+}
 const wheelNames=['Переднее левое','Переднее правое','Заднее 1 · левое внутреннее','Заднее 1 · левое наружное','Заднее 1 · правое внутреннее','Заднее 1 · правое наружное','Заднее 2 · левое внутреннее','Заднее 2 · левое наружное','Заднее 2 · правое внутреннее','Заднее 2 · правое наружное'];
 const wheelSelect=document.querySelector('#wheel-select');
 wheelNames.forEach((name,i)=>{const option=document.createElement('option');option.value=String(i);option.textContent=name;wheelSelect.append(option);});
@@ -22,7 +37,7 @@ function health(){
 }
 const horn=new HornPlayer();window.truck.onHorn(()=>horn.play().catch(()=>{document.querySelector('#notice,#error').textContent='Не удалось воспроизвести сигнал. Проверьте звук приложения.';}));
 window.truck.onState(data=>{horn.setVolume(data.hornVolume);
- state=data;truck.state=data;
+ state=data;truck.state=data;if(['controls','state'].includes(data.panelTab))selectTab(data.panelTab);facts();
  for(const button of document.querySelectorAll('[data-toggle]')){const active=!!data[button.dataset.toggle];button.setAttribute('aria-pressed',String(active));}
  for(const name of ['speed','size','mode','hornVolume']){const input=document.querySelector(`[name="${name}"]`);if(document.activeElement!==input)input.value=data[name];}
  document.querySelector('#speed-value').textContent=`${data.speed} px/с`;
