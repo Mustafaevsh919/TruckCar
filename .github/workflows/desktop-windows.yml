@@ -1,0 +1,38 @@
+name: Build Volvo Desktop for Windows
+on:
+  push:
+    paths: ['desktop/**', '.github/workflows/desktop-windows.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Check native window discovery
+        shell: powershell
+        run: |
+          $result = powershell -NoProfile -ExecutionPolicy Bypass -File app/native/windows.ps1 -Once
+          if ($LASTEXITCODE -ne 0) { throw 'Window discovery failed' }
+          $parsed = $result | ConvertFrom-Json
+          if ($null -eq $parsed.windows) { throw 'Missing window geometry' }
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Volvo-Desktop-Windows-x64
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.zip
+          if-no-files-found: error

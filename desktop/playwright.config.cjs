@@ -1,0 +1,2 @@
+const {defineConfig}=require('@playwright/test');
+module.exports=defineConfig({testDir:'./test/ui',timeout:150000,workers:1,use:{baseURL:'http://127.0.0.1:4321',viewport:{width:430,height:760},launchOptions:{executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']}},webServer:{command:'node test/server.cjs',port:4321,reuseExistingServer:false}});

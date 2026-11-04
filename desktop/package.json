@@ -1,0 +1,55 @@
+{
+  "name": "volvo-desktop-truck",
+  "version": "0.1.0",
+  "description": "Interactive Volvo VNL 760 desktop companion for Windows 10 and 11",
+  "private": true,
+  "main": "app/main.cjs",
+  "author": "Mustafaevsh919",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "start": "npm run build && electron .",
+    "test": "node test/motion.test.cjs && node test/rig.test.mjs",
+    "test:ui": "npm run build && playwright test",
+    "dist:win": "npm run build && electron-builder --win portable zip --x64"
+  },
+  "devDependencies": {
+    "electron": "45.2.2",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "@playwright/test": "1.56.1",
+    "three": "0.187.0"
+  },
+  "build": {
+    "appId": "com.mustafaevsh919.volvodesktop",
+    "productName": "Volvo Desktop",
+    "artifactName": "Volvo-Desktop-${version}-${arch}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/**/*",
+      "!app/assets/truck.glb",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "app/native/**/*"
+    ],
+    "win": {
+      "target": [
+        "portable",
+        "zip"
+      ],
+      "icon": "app/assets/truck.ico",
+      "signAndEditExecutable": false
+    },
+    "portable": {
+      "requestExecutionLevel": "user"
+    },
+    "publish": null
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Mustafaevsh919/TruckCar.git",
+    "directory": "desktop"
+  }
+}

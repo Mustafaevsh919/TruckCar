@@ -1,0 +1,13 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self';"><title>Ваш Volvo</title><link rel="stylesheet" href="panel.css"></head><body>
+<header><div><small>DESKTOP GARAGE</small><h1>Ваш Volvo<span>VNL 760</span></h1></div><button class="close" data-command="panel-close" aria-label="Закрыть управление">×</button></header>
+<section class="preview"><canvas aria-label="Предпросмотр модели. Поворачивайте мышью, приближайте колёсиком."></canvas><span class="badge" id="status">Подключение…</span><span class="orbit-hint">Поверните модель мышью</span></section>
+<main>
+<div class="section-title"><h2>Открыть и посмотреть</h2><button class="text" data-command="close-all">Закрыть всё</button></div>
+<div class="toggles"><button data-toggle="doorLeft" aria-pressed="false">Левая дверь</button><button data-toggle="doorRight" aria-pressed="false">Правая дверь</button><button data-toggle="windowLeft" aria-pressed="false">Левое стекло</button><button data-toggle="windowRight" aria-pressed="false">Правое стекло</button><button data-toggle="hood" aria-pressed="false">Капот и двигатель</button><button data-toggle="lights" aria-pressed="true">Фары</button></div>
+<div class="section-title ride-title"><h2>Поездка</h2><div class="directions"><button data-direction="-1" aria-label="Ехать влево">←</button><button data-toggle="paused" aria-pressed="false" id="pause-label">Пауза</button><button data-direction="1" aria-label="Ехать вправо">→</button></div></div>
+<label class="row">Маршрут<select name="mode"><option value="roam">Стол и окна</option><option value="desktop">Рабочий стол</option><option value="windows">По окнам</option></select></label>
+<label class="range-label">Скорость<span id="speed-value">65 px/с</span><input aria-label="Скорость" name="speed" type="range" min="20" max="180" value="65"></label>
+<label class="range-label">Размер<span id="size-value">360 px</span><input aria-label="Размер грузовика" name="size" type="range" min="240" max="540" step="10" value="360"></label>
+<div class="bottom-actions"><button data-command="desktop">На стол</button><button data-command="window">На окно</button><button data-toggle="autostart" aria-pressed="false">Автозапуск</button></div>
+<p id="notice" role="status">Пока открыто управление, грузовик стоит. Перетащите его мышью в любое место.</p>
+</main><footer><span>Ctrl + Alt + T — управление</span><button class="text" data-command="quit">Выход</button></footer><script type="module" src="runtime/panel.js"></script></body></html>

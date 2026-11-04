@@ -1,0 +1,7 @@
+node_modules/
+app/runtime/
+dist/
+test-results/
+playwright-report/
+*.log
+app/assets/truck.glb
