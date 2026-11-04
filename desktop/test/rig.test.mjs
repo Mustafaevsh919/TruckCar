@@ -23,3 +23,9 @@ test('wheel rotation follows distance and the hood opens away from the engine',(
  const after=new THREE.Vector3(-2,1,0).applyMatrix4(rig.hood.matrixWorld);assert(after.y>before.y+.5);
  assert(Math.abs(rig.wheels[0].quaternion.z)>.99);
 });
+test('selected wheel is removed and reattached during replacement without disturbing others',()=>{
+ rig.apply({},10);const before=rig.wheels.map(w=>w.position.clone());
+ rig.apply({service:{type:'wheel',wheel:0,progress:.35}},.1);assert(rig.wheels[0].position.distanceTo(before[0])>.3);assert(rig.wheels[1].position.equals(before[1]));
+ rig.apply({service:{type:'wheel',wheel:0,progress:.52}},.1);assert.equal(rig.wheels[0].visible,false);
+ rig.apply({service:{type:'wheel',wheel:0,progress:.96}},.1);assert.equal(rig.wheels[0].visible,true);assert(rig.wheels[0].position.distanceTo(before[0])<1e-6);
+});

@@ -7,5 +7,6 @@ contextBridge.exposeInMainWorld('truck',{
   hover:(value)=>ipcRenderer.send('hover',Boolean(value)),
   drag:(value)=>ipcRenderer.send('drag',Boolean(value)),
   onState:(fn)=>listen('state',fn), onMotion:(fn)=>listen('motion',fn),
+  onHorn:(fn)=>listen('horn',fn),
   onPointer:(fn)=>listen('pointer',fn), onError:(fn)=>listen('status',fn)
 });

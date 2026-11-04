@@ -1,6 +1,6 @@
 {
   "name": "volvo-desktop-truck",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Interactive Volvo VNL 760 desktop companion for Windows 10 and 11",
   "private": true,
   "main": "app/main.cjs",
@@ -8,7 +8,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "test": "node test/motion.test.cjs && node test/rig.test.mjs",
+    "test": "node test/motion.test.cjs && node test/rig.test.mjs && node test/maintenance.test.cjs",
     "test:ui": "npm run build && playwright test",
     "dist:win": "npm run build && electron-builder --win portable zip --x64"
   },
